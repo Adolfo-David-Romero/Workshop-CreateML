@@ -11,6 +11,7 @@ struct PredictionView: View {
     @State private var predictedGenre: String = "Press the button to start listening..."
     @State private var predictedConfidence: String = ""
     @State private var isListening: Bool = false // To track the state of the audio classification
+    @ObservedObject private var classifier = AudioClassifier.shared // Observe genreCount updates
 
     var body: some View {
         VStack {
@@ -20,7 +21,7 @@ struct PredictionView: View {
             
             Text(predictedGenre)
                 .font(.title)
-                .foregroundColor(predictedGenre == "Uncertain Prediction" ? .gray : .blue) // Different color for uncertain predictions
+                .foregroundColor(predictedGenre == "Uncertain Prediction" ? .gray : .blue)
                 .padding()
             
             if predictedGenre != "Uncertain Prediction" {
@@ -32,17 +33,30 @@ struct PredictionView: View {
             
             Spacer()
             
+            Text("Top Genres:")
+                .font(.headline)
+                .padding(.top)
+            
+            // Display top 3 genres
+            ForEach(topGenres, id: \.self) { genre in
+                Text(genre)
+                    .font(.body)
+                    .padding(.vertical, 2)
+            }
+
+            Spacer()
+            
             Button(action: {
                 if isListening {
-                    // Stop listening
-                    AudioClassifier.shared.stopListening()
+                    // Stop listening and reset state
+                    classifier.stopListening()
                     predictedGenre = "Stopped listening."
                     predictedConfidence = ""
                 } else {
                     // Start listening
                     predictedGenre = "Listening..."
                     predictedConfidence = ""
-                    AudioClassifier.shared.startListening { genre, confidence in
+                    classifier.startListening { genre, confidence in
                         if confidence > 0.0 {
                             predictedGenre = genre
                             predictedConfidence = String(format: "Confidence: %.2f%%", confidence * 100)
@@ -59,10 +73,20 @@ struct PredictionView: View {
             })
             .padding()
             .foregroundColor(isListening ? .red : .blue)
+
         }
         .padding()
     }
+
+    // Get the top 3 genres
+    private var topGenres: [String] {
+        classifier.genreCount
+            .sorted { $0.value > $1.value } // Sort by count
+            .prefix(3) // Take top 3
+            .map { "\($0.key): \($0.value)" } // Format as "Genre: Count"
+    }
 }
+
 
 
 #Preview {

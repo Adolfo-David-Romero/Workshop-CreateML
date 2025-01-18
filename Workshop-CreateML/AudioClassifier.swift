@@ -11,7 +11,6 @@ import SoundAnalysis
 import CoreML
 
 class AudioClassifier: NSObject, ObservableObject {
-    
     static let shared = AudioClassifier()
     private let model: MusicGenreClassifier
 
@@ -20,6 +19,9 @@ class AudioClassifier: NSObject, ObservableObject {
         let inputNode = audioEngine.inputNode
         return inputNode.inputFormat(forBus: 0) // Fetch the input format directly from the input node
     }()
+    
+    // Track genre counts
+    @Published private(set) var genreCount: [String: Int] = [:]
 
     private override init() {
         // Load the CoreML model
@@ -41,7 +43,6 @@ class AudioClassifier: NSObject, ObservableObject {
         }
     }
 
-
     func startListening(onResult: @escaping (String, Double) -> Void) {
         let confidenceThreshold: Double = 0.8 // 80% threshold
 
@@ -55,6 +56,7 @@ class AudioClassifier: NSObject, ObservableObject {
             if let result = self.predictGenre(from: audioSamples) {
                 if result.confidence >= confidenceThreshold {
                     DispatchQueue.main.async {
+                        self.updateGenreCount(with: result.genre)
                         onResult(result.genre, result.confidence)
                     }
                 } else {
@@ -74,11 +76,18 @@ class AudioClassifier: NSObject, ObservableObject {
         }
     }
 
-
-
     func stopListening() {
         audioEngine.stop()
         audioEngine.inputNode.removeTap(onBus: 0)
+        DispatchQueue.main.async {
+            self.genreCount.removeAll() // Clear the genre count
+        }
+    }
+
+
+    // Update genre count
+    private func updateGenreCount(with genre: String) {
+        genreCount[genre, default: 0] += 1
     }
 
     // Process the audio buffer into a Float32 MultiArray
@@ -123,4 +132,3 @@ class AudioClassifier: NSObject, ObservableObject {
         }
     }
 }
-
