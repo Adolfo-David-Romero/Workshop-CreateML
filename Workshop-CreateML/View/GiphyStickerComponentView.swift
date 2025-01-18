@@ -7,7 +7,7 @@
 
 import SwiftUI
 
-struct GiphyStickerView: View {
+struct GiphyStickerComponentView: View {
     @State private var stickerURL: String? = nil
     @State private var isLoading: Bool = true
     @State private var errorMessage: String? = nil
@@ -100,5 +100,5 @@ struct GiphyStickerView: View {
 
 
 #Preview {
-    GiphyStickerView()
+    GiphyStickerComponentView()
 }
