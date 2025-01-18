@@ -42,7 +42,9 @@ class AudioClassifier: NSObject, ObservableObject {
     }
 
 
-    func startListening(onResult: @escaping (String) -> Void) {
+    func startListening(onResult: @escaping (String, Double) -> Void) {
+        let confidenceThreshold: Double = 0.8 // 80% threshold
+
         let inputNode = audioEngine.inputNode
 
         inputNode.installTap(onBus: 0, bufferSize: 15600, format: inputFormat) { buffer, when in
@@ -50,9 +52,15 @@ class AudioClassifier: NSObject, ObservableObject {
             let audioSamples = self.processAudioBuffer(buffer: buffer)
             
             // Perform prediction
-            if let prediction = self.predictGenre(from: audioSamples) {
-                DispatchQueue.main.async {
-                    onResult(prediction)
+            if let result = self.predictGenre(from: audioSamples) {
+                if result.confidence >= confidenceThreshold {
+                    DispatchQueue.main.async {
+                        onResult(result.genre, result.confidence)
+                    }
+                } else {
+                    DispatchQueue.main.async {
+                        onResult("Uncertain Prediction", 0.0)
+                    }
                 }
             }
         }
@@ -65,6 +73,8 @@ class AudioClassifier: NSObject, ObservableObject {
             print("Audio engine start error: \(error)")
         }
     }
+
+
 
     func stopListening() {
         audioEngine.stop()
@@ -93,12 +103,20 @@ class AudioClassifier: NSObject, ObservableObject {
     }
 
     // Perform prediction using the CoreML model
-    private func predictGenre(from audioSamples: MLMultiArray?) -> String? {
+    private func predictGenre(from audioSamples: MLMultiArray?) -> (genre: String, confidence: Double)? {
         guard let audioSamples = audioSamples else { return nil }
 
         do {
             let prediction = try model.prediction(audioSamples: audioSamples)
-            return prediction.target //"Target" is the genre
+
+            // Find the predicted genre and its confidence
+            let genre = prediction.target
+            let probabilities = prediction.targetProbability // "TargetProbability" is the confidence level of prediction
+            if let confidence = probabilities[genre] {
+                return (genre, confidence)
+            } else {
+                return (genre, 0.0) // Fallback if confidence is not found
+            }
         } catch {
             print("Error during prediction: \(error)")
             return nil
