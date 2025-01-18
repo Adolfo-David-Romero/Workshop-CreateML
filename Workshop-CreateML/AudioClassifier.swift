@@ -11,45 +11,53 @@ import SoundAnalysis
 import CoreML
 
 class AudioClassifier: NSObject, ObservableObject {
+    
     static let shared = AudioClassifier()
+    private let model: MusicGenreClassifier
 
-    private var audioEngine = AVAudioEngine()
-    private var streamAnalyzer: SNAudioStreamAnalyzer?
-    private let inputFormat: AVAudioFormat
-    private let queue = DispatchQueue(label: "AudioAnalysisQueue")
-    private var resultsObserver: ResultsObserver?
+    private let audioEngine = AVAudioEngine()
+    private lazy var inputFormat: AVAudioFormat = {
+        let inputNode = audioEngine.inputNode
+        return inputNode.inputFormat(forBus: 0) // Fetch the input format directly from the input node
+    }()
 
     private override init() {
-        self.inputFormat = AVAudioFormat(standardFormatWithSampleRate: 44100, channels: 1)!
+        // Load the CoreML model
+        do {
+            self.model = try MusicGenreClassifier(configuration: MLModelConfiguration())
+        } catch {
+            fatalError("Failed to load CoreML model: \(error)")
+        }
+
         super.init()
+
+        // Configure the audio session
+        let audioSession = AVAudioSession.sharedInstance()
+        do {
+            try audioSession.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker])
+            try audioSession.setActive(true)
+        } catch {
+            print("Audio session configuration failed: \(error)")
+        }
     }
 
+
     func startListening(onResult: @escaping (String) -> Void) {
-        let model: MLModel
-        do {
-            let compiledModelURL = try MLModel.compileModel(at: Bundle.main.url(forResource: "GenreClassifier", withExtension: "mlmodelc")!)
-            model = try MLModel(contentsOf: compiledModelURL)
-        } catch {
-            print("Failed to load model: \(error)")
-            return
-        }
-
-        resultsObserver = ResultsObserver(onResult: onResult)
-        streamAnalyzer = SNAudioStreamAnalyzer(format: inputFormat)
-        streamAnalyzer?.add(MLModel: model, completionHandler: { error in //TODO: ADD MODEL
-            if let error = error {
-                print("Error adding MLModel: \(error)")
-            }
-        })
-
         let inputNode = audioEngine.inputNode
 
-        inputNode.installTap(onBus: 0, bufferSize: 1024, format: inputFormat) { buffer, when in
-            self.queue.async {
-                self.streamAnalyzer?.analyze(buffer, atAudioFramePosition: when.sampleTime)
+        inputNode.installTap(onBus: 0, bufferSize: 15600, format: inputFormat) { buffer, when in
+            // Process the audio buffer
+            let audioSamples = self.processAudioBuffer(buffer: buffer)
+            
+            // Perform prediction
+            if let prediction = self.predictGenre(from: audioSamples) {
+                DispatchQueue.main.async {
+                    onResult(prediction)
+                }
             }
         }
 
+        // Start the audio engine
         do {
             audioEngine.prepare()
             try audioEngine.start()
@@ -61,35 +69,40 @@ class AudioClassifier: NSObject, ObservableObject {
     func stopListening() {
         audioEngine.stop()
         audioEngine.inputNode.removeTap(onBus: 0)
-        streamAnalyzer = nil
+    }
+
+    // Process the audio buffer into a Float32 MultiArray
+    private func processAudioBuffer(buffer: AVAudioPCMBuffer) -> MLMultiArray? {
+        guard let channelData = buffer.floatChannelData?[0] else {
+            print("Failed to get channel data from buffer.")
+            return nil
+        }
+
+        // Convert the audio buffer into a normalized MLMultiArray
+        let frameCount = min(Int(buffer.frameLength), 15600)
+        do {
+            let audioSamples = try MLMultiArray(shape: [15600], dataType: .float32)
+            for i in 0..<frameCount {
+                audioSamples[i] = NSNumber(value: channelData[i])
+            }
+            return audioSamples
+        } catch {
+            print("Error creating MLMultiArray: \(error)")
+            return nil
+        }
+    }
+
+    // Perform prediction using the CoreML model
+    private func predictGenre(from audioSamples: MLMultiArray?) -> String? {
+        guard let audioSamples = audioSamples else { return nil }
+
+        do {
+            let prediction = try model.prediction(audioSamples: audioSamples)
+            return prediction.target //"Target" is the genre
+        } catch {
+            print("Error during prediction: \(error)")
+            return nil
+        }
     }
 }
 
-//MARK: - Result handeling
-
-class ResultsObserver: NSObject, SNResultsObserving {
-    private let onResult: (String) -> Void
-
-    init(onResult: @escaping (String) -> Void) {
-        self.onResult = onResult
-    }
-
-    func request(_ request: SNRequest, didProduce result: SNResult) {
-        guard let classificationResult = result as? SNClassificationResult else {
-            return
-        }
-
-        if let bestClassification = classificationResult.classifications.first {
-            let genre = bestClassification.identifier
-            self.onResult(genre)
-        }
-    }
-
-    func request(_ request: SNRequest, didFailWithError error: Error) {
-        print("Classification error: \(error)")
-    }
-
-    func requestDidComplete(_ request: SNRequest) {
-        print("Request completed.")
-    }
-}
