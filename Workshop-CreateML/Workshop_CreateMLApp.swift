@@ -11,7 +11,7 @@ import SwiftUI
 struct Workshop_CreateMLApp: App {
     var body: some Scene {
         WindowGroup {
-            PredictionView()
+            HomeView()
         }
     }
 }
