@@ -93,13 +93,6 @@ Before you begin, ensure you have the following:
 
 * * * * *
 
-📸 Screenshot
--------------
-
-*Add your project screenshot here to give users a visual idea of the final app.*
-
-* * * * *
-
 🌟 Key Features
 ---------------
 
