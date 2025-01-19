@@ -52,7 +52,7 @@ Before you begin, ensure you have the following:
 
 4.  **GIPHY API Key**: Sign up at [GIPHY Developers](https://developers.giphy.com/) to get an API key.
 
-5.  **GTZAN Dataset**: Download the dataset from [GTZAN](http://marsyas.info/downloads/datasets.html) for training the model.
+5.  **GTZAN Dataset**: Download the dataset from [GTZAN](https://www.kaggle.com/datasets/andradaolteanu/gtzan-dataset-music-genre-classification) for training the model.
 
 * * * * *
 
