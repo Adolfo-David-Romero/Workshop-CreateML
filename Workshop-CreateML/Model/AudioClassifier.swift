@@ -12,7 +12,7 @@ import CoreML
 
 class AudioClassifier: NSObject, ObservableObject {
     static let shared = AudioClassifier()
-    private let model: MusicGenreClassifier
+    private let model: MLModel //FIXME: replace with actual model
 
     private let audioEngine = AVAudioEngine()
     private lazy var inputFormat: AVAudioFormat = {
@@ -26,7 +26,8 @@ class AudioClassifier: NSObject, ObservableObject {
     private override init() {
         // Load the CoreML model
         do {
-            self.model = try MusicGenreClassifier(configuration: MLModelConfiguration())
+            // TODO: Complete this - Initialize the CoreML model with its configuration
+           
         } catch {
             fatalError("Failed to load CoreML model: \(error)")
         }
@@ -42,9 +43,10 @@ class AudioClassifier: NSObject, ObservableObject {
             print("Audio session configuration failed: \(error)")
         }
     }
+    
 
     func startListening(onResult: @escaping (String, Double) -> Void) {
-        let confidenceThreshold: Double = 0.8 // 80% threshold
+        let confidenceThreshold: Double //FIXME: Set 80% threshold
 
         let inputNode = audioEngine.inputNode
 
@@ -116,7 +118,7 @@ class AudioClassifier: NSObject, ObservableObject {
         guard let audioSamples = audioSamples else { return nil }
 
         do {
-            let prediction = try model.prediction(audioSamples: audioSamples)
+            let prediction = try model.prediction(audioSamples: audioSamples) //FIXME: Will run an error until prior steps are handled
 
             // Find the predicted genre and its confidence
             let genre = prediction.target
