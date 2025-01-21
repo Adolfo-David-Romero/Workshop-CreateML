@@ -1,4 +1,4 @@
-Workshop: CreateML Audio Classifier with GIPHY API Integration
+Hackathon Workshop 2025: iOS CreateML Audio Classifier with GIPHY API Integration.
 ==============================================================
 
 Welcome to the **CreateML Audio Classifier Workshop**! 🎵 This hands-on exercise will guide you through creating an iOS app that classifies audio genres using **CreateML** and enhances the user experience by integrating the **GIPHY API** for visual feedback.
@@ -71,7 +71,7 @@ Before you begin, ensure you have the following:
 
 -   Open the `starter` branch in Xcode.
 
--   Complete the `//TODO: Complete this` sections in the code, which cover:
+-   Complete the `//TODO: Complete this`, or `//FIXME: Fix this` sections in the code, which cover:
 
     -   Initializing the CoreML model.
 
