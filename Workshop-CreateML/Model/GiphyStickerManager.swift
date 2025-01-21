@@ -9,7 +9,7 @@ import Foundation
 
 class GiphyStickerManager: ObservableObject {
     @Published var stickerURL: String? = nil
-    private let apiKey = "0vRJcBT7nzox8xlqDFGPV1N9cLkLzwAj"
+    private let apiKey = "" //FIXME: Add your own API KEY HERE
 
     func fetchSticker(for genre: String) {
         guard !genre.isEmpty else { return }
